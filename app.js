@@ -7,6 +7,57 @@
 const $  = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
+/* ---------- Plattform ---------- */
+const UA = navigator.userAgent;
+const isIOS = /iP(hone|ad|od)/.test(UA) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+const isAndroid = /Android/.test(UA);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone===true;
+
+/* ---------- Diagnose-Banner ---------- */
+// cat: 'gps' | 'compass' – damit der jeweilige Hinweis wieder verschwindet,
+// sobald das zugehörige Signal doch kommt.
+function showBanner(cat, kind, html){
+  const el = $('#banner');
+  el.dataset.cat = cat;
+  el.className = 'banner '+kind;
+  el.innerHTML = html;
+  el.hidden = false;
+}
+function clearBanner(cat){
+  const el = $('#banner');
+  if (!el.hidden && (!cat || el.dataset.cat===cat)){ el.hidden = true; el.innerHTML=''; }
+}
+function gpsHelpHtml(title){
+  if (isAndroid) return `<b>${title}</b>
+    <ol>
+      <li>Gerät-<b>Standort/GPS</b> einschalten (von oben wischen).</li>
+      <li>Einstellungen → <b>Apps → Chrome → Berechtigungen → Standort → „Zulassen"</b> (die installierte App nutzt Chrome).</li>
+      <li>Die Seite in <b>Chrome</b> öffnen → <b>🔒/ⓘ</b> neben der Adresse → <b>Standort → „Zulassen"</b>.</li>
+      <li>Installierte App schließen und neu öffnen.</li>
+    </ol>
+    <button class="btn" data-action="retry">Erneut versuchen</button>`;
+  if (isIOS) return `<b>${title}</b>
+    <ol>
+      <li>Einstellungen → <b>Datenschutz &amp; Sicherheit → Ortungsdienste</b> → an.</li>
+      <li>Darunter <b>Safari</b> → „Beim Verwenden erlauben".</li>
+      <li>Seite neu laden.</li>
+    </ol>
+    <button class="btn" data-action="retry">Erneut versuchen</button>`;
+  return `<b>${title}</b><br>Bitte den Standortzugriff im Browser erlauben und Standort/GPS am Gerät einschalten.
+    <br><button class="btn" data-action="retry">Erneut versuchen</button>`;
+}
+function compassHelpHtml(title){
+  if (isIOS) return `<b>${title}</b>
+    <ol>
+      <li>Einstellungen → <b>Safari</b> → ganz unten <b>„Bewegung &amp; Ausrichtung"</b> einschalten.</li>
+      <li>Seite neu laden und erneut „erlauben" tippen.</li>
+    </ol>
+    <button class="btn" data-action="retry">Erneut versuchen</button>`;
+  return `<b>${title}</b><br>Bewege das Handy einmal in einer liegenden 8 zum Kalibrieren.
+    Ohne Kompass funktionieren Liste und Luftlinie trotzdem – nur die „Blickrichtung" fehlt.
+    <br><button class="btn" data-action="retry">Erneut versuchen</button>`;
+}
+
 /* ---------- Zustand ---------- */
 const state = {
   pos: null,            // {lat, lon, acc}
@@ -80,11 +131,24 @@ function startGeo(){
       const first = !state.pos;
       state.pos = { lat:p.coords.latitude, lon:p.coords.longitude, acc:p.coords.accuracy };
       setGps('GPS ±'+Math.round(p.coords.accuracy)+'m', 'ok');
+      clearBanner('gps');
       recompute();
       // Beim ersten Fix (oder größerer Bewegung) Daten laden
       maybeReload(first);
     },
-    err => setGps('GPS: '+err.message, 'warn'),
+    err => {
+      if (err.code === err.PERMISSION_DENIED){
+        setGps('Standort blockiert', 'warn');
+        showBanner('gps', 'error', gpsHelpHtml('Standortzugriff ist blockiert.'));
+      } else if (err.code === err.POSITION_UNAVAILABLE){
+        setGps('Standort n/a', 'warn');
+        showBanner('gps', 'warn', gpsHelpHtml('Kein Standort verfügbar – ist GPS eingeschaltet?'));
+      } else { // TIMEOUT
+        setGps('Standort langsam', 'warn');
+        showBanner('gps', 'warn', `<b>Standort dauert zu lange.</b><br>Am besten im Freien erneut versuchen.
+          <br><button class="btn" data-action="retry">Erneut versuchen</button>`);
+      }
+    },
     { enableHighAccuracy:true, maximumAge:5000, timeout:20000 }
   );
 }
@@ -117,30 +181,61 @@ function onOrientation(e){
   state.rawHeading = sh;
   state.heading = (sh + state.settings.decl + 360) % 360;
   setHead('Kompass', 'ok');
+  clearBanner('compass');
   renderHeading();
   if (state.currentView === 'radar') drawRadar();
 }
 
+let orientationBound = false;
+let compassTimer = null;
+
 async function enableSensors(){
-  const hint = $('#permHint');
-  // iOS 13+: explizite Erlaubnis
+  $('#permGate').hidden = true;
+  $('#app').hidden = false;
+
+  // iOS 13+: explizite Kompass-Erlaubnis (nur per Nutzer-Geste möglich)
+  let iosDenied = false;
   try {
     if (typeof DeviceOrientationEvent !== 'undefined' &&
         typeof DeviceOrientationEvent.requestPermission === 'function'){
       const res = await DeviceOrientationEvent.requestPermission();
-      if (res !== 'granted'){ hint.textContent = 'Kompass-Zugriff abgelehnt.'; }
+      if (res !== 'granted') iosDenied = true;
     }
-  } catch(err){ hint.textContent = 'Kompass: '+err.message; }
+  } catch(err){
+    // Wirft u.a., wenn "Bewegung & Ausrichtung" in den iOS-Safari-Einstellungen aus ist
+    iosDenied = true;
+  }
+  if (iosDenied){
+    setHead('Kompass gesperrt', 'warn');
+    showBanner('compass', 'error', compassHelpHtml('Kompass ist vom System gesperrt.'));
+  }
 
-  // Absolute Orientierung bevorzugen (Android), sonst Standard
-  window.addEventListener('deviceorientationabsolute', onOrientation, true);
-  window.addEventListener('deviceorientation', onOrientation, true);
+  // Orientierungs-Listener nur einmal binden
+  if (!orientationBound){
+    window.addEventListener('deviceorientationabsolute', onOrientation, true);
+    window.addEventListener('deviceorientation', onOrientation, true);
+    orientationBound = true;
+  }
 
   startGeo();
 
-  $('#permGate').hidden = true;
-  $('#app').hidden = false;
-  setTimeout(() => { if (state.heading == null) setHead('Kompass?', 'warn'); }, 2500);
+  // Kompass-Timeout: kommen keine Daten, klaren Hinweis zeigen (kein Overwrite eines GPS-Fehlers)
+  clearTimeout(compassTimer);
+  compassTimer = setTimeout(() => {
+    if (state.heading == null && !iosDenied){
+      setHead('Kompass?', 'warn');
+      if ($('#banner').hidden){
+        showBanner('compass', 'warn', compassHelpHtml('Kompass liefert noch keine Daten.'));
+      }
+    }
+  }, 4000);
+}
+
+// Von „Erneut versuchen" ausgelöst
+function retrySensors(){
+  clearBanner();
+  setGps('GPS…', 'off');
+  enableSensors();
 }
 
 function setGps(txt,kind){ const el=$('#gpsState'); el.textContent=txt; el.className='pill pill-'+kind; }
@@ -437,6 +532,9 @@ function switchView(v){
 
 function bindUI(){
   $('#btnEnable').addEventListener('click', enableSensors);
+  $('#banner').addEventListener('click', e => {
+    if (e.target.closest('[data-action="retry"]')) retrySensors();
+  });
   $$('.tab').forEach(t => t.addEventListener('click', () => switchView(t.dataset.view)));
 
   $('#sheetClose').addEventListener('click', closeSheet);

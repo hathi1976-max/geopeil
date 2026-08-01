@@ -1,5 +1,5 @@
 /* GeoPeil Service Worker – App-Shell offline cachen */
-const CACHE = 'geopeil-v1';
+const CACHE = 'geopeil-v2';
 const SHELL = [
   './',
   './index.html',
