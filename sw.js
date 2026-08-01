@@ -1,5 +1,7 @@
-/* GeoPeil Service Worker – App-Shell offline cachen */
-const CACHE = 'geopeil-v2';
+/* GeoPeil Service Worker
+   Strategie: network-first für die eigene App (damit Updates sofort ankommen),
+   Cache dient nur als Offline-Fallback. Externe Daten (Overpass/OSM) nie cachen. */
+const CACHE = 'geopeil-v3';
 const SHELL = [
   './',
   './index.html',
@@ -16,23 +18,29 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // Overpass & Kartenlinks nie cachen (immer live)
-  if (url.hostname.includes('overpass') || url.hostname.includes('openstreetmap')){
-    return; // Netzwerk durchreichen
+
+  // Overpass & Karten immer live aus dem Netz
+  if (url.hostname.includes('overpass') || url.hostname.includes('openstreetmap')) return;
+
+  // Eigene App: network-first, bei Offline aus dem Cache
+  if (url.origin === self.location.origin){
+    e.respondWith(
+      fetch(e.request)
+        .then(resp => {
+          const copy = resp.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy)).catch(()=>{});
+          return resp;
+        })
+        .catch(() => caches.match(e.request).then(hit => hit || caches.match('./index.html')))
+    );
   }
-  // App-Shell: cache-first
-  e.respondWith(
-    caches.match(e.request).then(hit => hit || fetch(e.request).then(resp => {
-      const copy = resp.clone();
-      caches.open(CACHE).then(c => c.put(e.request, copy)).catch(()=>{});
-      return resp;
-    }).catch(() => caches.match('./index.html')))
-  );
 });
