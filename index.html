@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d1117" />
+  <title>GeoPeil – Berge & Orte finden</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header id="topbar">
+    <div class="brand">📍 GeoPeil</div>
+    <div id="status" class="status">
+      <span id="gpsState" class="pill pill-off">GPS…</span>
+      <span id="headState" class="pill pill-off">Kompass…</span>
+    </div>
+  </header>
+
+  <!-- Setup / Berechtigungen -->
+  <section id="permGate" class="gate">
+    <p>Diese App braucht deinen <b>Standort</b> und den <b>Kompass</b> des Handys.</p>
+    <button id="btnEnable" class="btn btn-primary">Standort &amp; Kompass erlauben</button>
+    <p id="permHint" class="hint"></p>
+  </section>
+
+  <main id="app" hidden>
+    <!-- Ansicht-Umschalter -->
+    <nav class="tabs">
+      <button class="tab tab-active" data-view="radar">Radar</button>
+      <button class="tab" data-view="list">Liste</button>
+      <button class="tab" data-view="saved">Gespeichert</button>
+      <button class="tab" data-view="settings">⚙︎</button>
+    </nav>
+
+    <!-- RADAR -->
+    <section id="view-radar" class="view">
+      <div class="radar-wrap">
+        <canvas id="radar" width="600" height="600"></canvas>
+      </div>
+      <div class="heading-readout">
+        <span id="headingDeg">–</span>° <span id="headingCard" class="card">–</span>
+      </div>
+      <div id="fovList" class="fov-list">
+        <p class="muted">Halte das Handy hoch und richte es auf einen Berg …</p>
+      </div>
+    </section>
+
+    <!-- LISTE -->
+    <section id="view-list" class="view" hidden>
+      <div class="list-tools">
+        <input id="search" class="search" type="search" placeholder="Suchen …" />
+        <select id="sortBy" class="select">
+          <option value="dir">In Blickrichtung zuerst</option>
+          <option value="dist">Nächste zuerst</option>
+          <option value="elev">Höchste zuerst</option>
+        </select>
+      </div>
+      <div id="allList" class="all-list"></div>
+    </section>
+
+    <!-- GESPEICHERT -->
+    <section id="view-saved" class="view" hidden>
+      <div id="savedList" class="all-list"></div>
+    </section>
+
+    <!-- EINSTELLUNGEN -->
+    <section id="view-settings" class="view" hidden>
+      <label class="field">
+        <span>Umkreis: <b id="radiusVal">60</b> km</span>
+        <input id="radius" type="range" min="5" max="300" step="5" value="60" />
+      </label>
+      <label class="field">
+        <span>Min. Berghöhe: <b id="minElevVal">0</b> m</span>
+        <input id="minElev" type="range" min="0" max="4000" step="100" value="0" />
+      </label>
+      <label class="field">
+        <span>Blickfeld-Breite: ±<b id="fovVal">25</b>°</span>
+        <input id="fov" type="range" min="5" max="60" step="5" value="25" />
+      </label>
+      <label class="field">
+        <span>Kompass-Korrektur: <b id="declVal">0</b>°</span>
+        <input id="decl" type="range" min="-30" max="30" step="1" value="0" />
+        <small class="muted">Feinjustierung, falls die Richtung leicht daneben liegt (Missweisung).</small>
+      </label>
+
+      <fieldset class="cats">
+        <legend>Anzeigen</legend>
+        <label><input type="checkbox" class="cat" value="peak" checked /> ⛰️ Berge/Gipfel</label>
+        <label><input type="checkbox" class="cat" value="water" checked /> 💧 Flüsse/Seen</label>
+        <label><input type="checkbox" class="cat" value="place" checked /> 🏘️ Orte</label>
+        <label><input type="checkbox" class="cat" value="sight" /> 🏰 Sehenswürdigkeiten</label>
+      </fieldset>
+
+      <button id="btnReload" class="btn">Daten neu laden</button>
+      <p id="dataHint" class="hint"></p>
+      <p class="muted small">Daten © OpenStreetMap-Mitwirkende (Overpass API). Luftlinie = Großkreis-Distanz.</p>
+    </section>
+  </main>
+
+  <!-- Detail-Sheet -->
+  <div id="sheet" class="sheet" hidden>
+    <div class="sheet-inner">
+      <button id="sheetClose" class="sheet-close">✕</button>
+      <h2 id="sheetName">–</h2>
+      <div id="sheetMeta" class="sheet-meta"></div>
+      <div class="sheet-actions">
+        <button id="sheetSave" class="btn">☆ Speichern</button>
+        <a id="sheetMap" class="btn" target="_blank" rel="noopener">Auf Karte</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

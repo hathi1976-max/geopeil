@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0d1117"/>
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#30363d" stroke-width="14"/>
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#30363d" stroke-width="10"/>
+  <!-- Kompassnadel -->
+  <polygon points="256,96 292,256 256,232 220,256" fill="#f0883e"/>
+  <polygon points="256,416 220,256 256,280 292,256" fill="#4aa8ff"/>
+  <!-- Berge -->
+  <path d="M150 330 L215 235 L260 300 L320 210 L400 330 Z" fill="#3fb950" opacity="0.9"/>
+  <circle cx="256" cy="256" r="14" fill="#e6edf3"/>
+</svg>

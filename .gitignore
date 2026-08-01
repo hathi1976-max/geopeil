@@ -1,0 +1,9 @@
+# lokale Tooling-/Editor-Konfiguration
+.claude/
+.vscode/
+.idea/
+
+# OS-Kram
+Thumbs.db
+.DS_Store
+desktop.ini

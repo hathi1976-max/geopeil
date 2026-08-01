@@ -1,0 +1,98 @@
+:root{
+  --bg:#0d1117; --bg2:#161b22; --bg3:#21262d;
+  --fg:#e6edf3; --muted:#8b949e;
+  --accent:#4aa8ff; --accent2:#3fb950;
+  --peak:#f0883e; --water:#4aa8ff; --place:#a371f7; --sight:#db61a2;
+  --line:#30363d;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg); color:var(--fg);
+  font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-tap-highlight-color:transparent;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+#topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;
+  background:var(--bg2); border-bottom:1px solid var(--line);
+  position:sticky; top:0; z-index:10;
+}
+.brand{font-weight:700}
+.status{display:flex; gap:6px}
+.pill{font-size:12px; padding:3px 8px; border-radius:999px; border:1px solid var(--line)}
+.pill-off{background:var(--bg3); color:var(--muted)}
+.pill-ok{background:rgba(63,185,80,.15); color:var(--accent2); border-color:transparent}
+.pill-warn{background:rgba(240,136,62,.15); color:var(--peak); border-color:transparent}
+
+.gate{padding:40px 20px; text-align:center; max-width:420px; margin:0 auto}
+.hint{color:var(--muted); font-size:13px; margin-top:12px; min-height:1em}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+
+.btn{
+  display:inline-block; text-align:center; text-decoration:none;
+  background:var(--bg3); color:var(--fg); border:1px solid var(--line);
+  padding:12px 16px; border-radius:10px; font-size:15px; cursor:pointer;
+}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--accent); border-color:transparent; color:#001; font-weight:600}
+
+.tabs{display:flex; gap:4px; padding:8px; background:var(--bg2); position:sticky; top:52px; z-index:9; border-bottom:1px solid var(--line)}
+.tab{flex:1; background:transparent; border:none; color:var(--muted); padding:8px; border-radius:8px; font-size:14px; cursor:pointer}
+.tab-active{background:var(--bg3); color:var(--fg)}
+
+.view{padding:14px}
+
+/* Radar */
+.radar-wrap{display:flex; justify-content:center}
+#radar{width:min(88vw,360px); height:min(88vw,360px); touch-action:none}
+.heading-readout{text-align:center; font-size:22px; margin:8px 0 4px; font-variant-numeric:tabular-nums}
+.heading-readout .card{color:var(--accent); font-weight:700; margin-left:6px}
+
+.fov-list{margin-top:8px; display:flex; flex-direction:column; gap:8px}
+
+/* Items */
+.item{
+  display:flex; align-items:center; gap:10px;
+  background:var(--bg2); border:1px solid var(--line);
+  padding:10px 12px; border-radius:12px; cursor:pointer;
+}
+.item .ico{font-size:22px; width:28px; text-align:center}
+.item .body{flex:1; min-width:0}
+.item .name{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.item .sub{font-size:13px; color:var(--muted)}
+.item .dist{font-weight:700; font-variant-numeric:tabular-nums; text-align:right}
+.item .arrow{font-size:20px; color:var(--accent); width:22px; text-align:center}
+.item.peak{border-left:3px solid var(--peak)}
+.item.water{border-left:3px solid var(--water)}
+.item.place{border-left:3px solid var(--place)}
+.item.sight{border-left:3px solid var(--sight)}
+.saved-star{color:#f0c000}
+
+.list-tools{display:flex; gap:8px; margin-bottom:10px}
+.search,.select{
+  background:var(--bg2); color:var(--fg); border:1px solid var(--line);
+  padding:10px; border-radius:10px; font-size:15px;
+}
+.search{flex:1; min-width:0}
+.all-list{display:flex; flex-direction:column; gap:8px}
+
+/* Settings */
+.field{display:flex; flex-direction:column; gap:6px; margin-bottom:18px}
+.field input[type=range]{width:100%}
+.cats{border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:16px}
+.cats legend{padding:0 6px; color:var(--muted)}
+.cats label{display:block; padding:6px 0}
+
+/* Sheet */
+.sheet{position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; z-index:50}
+.sheet-inner{background:var(--bg2); width:100%; border-radius:16px 16px 0 0; padding:20px; padding-bottom:calc(env(safe-area-inset-bottom) + 20px); position:relative}
+.sheet-close{position:absolute; top:14px; right:14px; background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer}
+.sheet h2{margin:0 6px 12px 0}
+.sheet-meta{display:flex; flex-direction:column; gap:6px; margin-bottom:16px}
+.sheet-meta div{display:flex; justify-content:space-between; border-bottom:1px solid var(--line); padding-bottom:6px}
+.sheet-meta .k{color:var(--muted)}
+.sheet-actions{display:flex; gap:10px}
+.sheet-actions .btn{flex:1}
