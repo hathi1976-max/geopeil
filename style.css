@@ -68,6 +68,11 @@ body{
 .heading-readout{text-align:center; font-size:22px; margin:8px 0 4px; font-variant-numeric:tabular-nums}
 .heading-readout .card{color:var(--accent); font-weight:700; margin-left:6px}
 
+.cdbg{
+  margin:8px 0; padding:10px 12px; background:var(--bg2); border:1px solid var(--line);
+  border-radius:10px; color:var(--accent2); font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;
+  white-space:pre-wrap; word-break:break-word;
+}
 .fov-list{margin-top:8px; display:flex; flex-direction:column; gap:8px}
 
 /* Items */

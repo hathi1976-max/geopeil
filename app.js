@@ -155,6 +155,28 @@ function startGeo(){
 
 let headingSmooth = null;
 let hasAbsolute = false;   // haben wir schon nordbezogene (absolute) Werte gesehen?
+
+/* ---- TEMP Kompass-Diagnose ---- */
+const _cev = {};
+let _cCount = 0, _cLast = performance.now(), _cRate = 0;
+function compassDebug(e, absolute, used, hRaw){
+  const key = e.type + (e.absolute===true?'/abs' : e.absolute===false?'/rel' : '/?');
+  _cev[key] = (_cev[key]||0)+1;
+  _cCount++;
+  const now = performance.now();
+  if (now - _cLast > 500){ _cRate = Math.round(_cCount*1000/(now-_cLast)); _cCount=0; _cLast=now; }
+  const el = document.querySelector('#cdbg');
+  if (!el) return;
+  const num = (v,d=1)=> (typeof v==='number' && !Number.isNaN(v)) ? v.toFixed(d) : '–';
+  el.textContent =
+    'Events: ' + Object.entries(_cev).map(([k,v])=>k+'='+v).join('  ') + '\n' +
+    'Rate ~' + _cRate + '/s   benutzt: ' + (used?'JA':'nein (ignoriert)') + '\n' +
+    'type=' + e.type + '  absolute=' + e.absolute + '\n' +
+    'alpha=' + num(e.alpha) + '  beta=' + num(e.beta,0) + '  gamma=' + num(e.gamma,0) + '\n' +
+    'webkitCompass=' + num(e.webkitCompassHeading) + '\n' +
+    'roh→' + num(hRaw,0) + '°   Anzeige=' + (state.heading==null?'–':Math.round(state.heading)) + '°';
+}
+
 function onOrientation(e){
   let h = null;
   let absolute = false;
@@ -165,6 +187,11 @@ function onOrientation(e){
     h = (360 - e.alpha);                         // Android
     absolute = (e.absolute === true) || e.type === 'deviceorientationabsolute';
   }
+
+  // Diagnose: jedes Event protokollieren (auch die ignorierten)
+  const willUse = !(h == null || Number.isNaN(h)) && !(hasAbsolute && !absolute);
+  compassDebug(e, absolute, willUse, h == null ? NaN : h);
+
   if (h == null || Number.isNaN(h)) return;
 
   // Nordbezogene Werte bevorzugen: sobald es die gibt, relative Events ignorieren.
