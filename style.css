@@ -40,6 +40,7 @@ body{
 .banner .btn{margin-top:6px; padding:8px 14px; font-size:14px}
 
 .gate{padding:40px 20px; text-align:center; max-width:420px; margin:0 auto}
+.ver{color:var(--muted); font-size:12px; margin-top:24px}
 .hint{color:var(--muted); font-size:13px; margin-top:12px; min-height:1em}
 .muted{color:var(--muted)}
 .small{font-size:12px}
