@@ -6,6 +6,9 @@
   --line:#30363d;
 }
 *{box-sizing:border-box}
+/* hidden-Attribut muss display-Regeln (z.B. .sheet{display:flex}) schlagen,
+   sonst überlagert ein „verstecktes" Overlay den Bildschirm und blockiert Taps */
+[hidden]{display:none !important}
 html,body{margin:0;height:100%}
 body{
   background:var(--bg); color:var(--fg);
