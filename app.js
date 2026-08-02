@@ -154,26 +154,33 @@ function startGeo(){
 }
 
 let headingSmooth = null;
+let hasAbsolute = false;   // haben wir schon nordbezogene (absolute) Werte gesehen?
 function onOrientation(e){
   let h = null;
+  let absolute = false;
   if (typeof e.webkitCompassHeading === 'number'){
     h = e.webkitCompassHeading;                 // iOS: bereits 0=N im Uhrzeigersinn
-  } else if (e.absolute && typeof e.alpha === 'number'){
-    h = (360 - e.alpha);                         // Android absolut
+    absolute = true;
   } else if (typeof e.alpha === 'number'){
-    h = (360 - e.alpha);                         // Fallback (evtl. relativ → Korrektur nötig)
+    h = (360 - e.alpha);                         // Android
+    absolute = (e.absolute === true) || e.type === 'deviceorientationabsolute';
   }
   if (h == null || Number.isNaN(h)) return;
+
+  // Nordbezogene Werte bevorzugen: sobald es die gibt, relative Events ignorieren.
+  // Sonst kämpfen absoluter und relativer Kompass gegeneinander → „Zappeln".
+  if (absolute) hasAbsolute = true;
+  if (hasAbsolute && !absolute) return;
 
   // Bildschirm-Drehung berücksichtigen
   const so = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
   h = (h + so + 360) % 360;
 
-  // Glätten (zirkulär)
+  // Glätten (zirkulär) – stärkere Glättung gegen Magnetometer-Rauschen
   const rad = toRad(h);
   const vx = Math.cos(rad), vy = Math.sin(rad);
   if (!headingSmooth) headingSmooth = { x:vx, y:vy };
-  const k = 0.2;
+  const k = 0.12;
   headingSmooth.x += (vx - headingSmooth.x)*k;
   headingSmooth.y += (vy - headingSmooth.y)*k;
   const sh = (toDeg(Math.atan2(headingSmooth.y, headingSmooth.x))+360)%360;

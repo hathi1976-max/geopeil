@@ -1,7 +1,7 @@
 /* GeoPeil Service Worker
    Strategie: network-first für die eigene App (damit Updates sofort ankommen),
    Cache dient nur als Offline-Fallback. Externe Daten (Overpass/OSM) nie cachen. */
-const CACHE = 'geopeil-v6';
+const CACHE = 'geopeil-v7';
 const SHELL = [
   './',
   './index.html',
