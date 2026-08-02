@@ -65,6 +65,7 @@ const state = {
   rawHeading: null,     // ohne Korrektur (fürs Debug)
   objects: [],          // geladene Objekte mit berechneter Distanz/Peilung
   saved: loadSaved(),
+  hidden: loadHidden(), // ausgeblendete Objekt-IDs (Set), bleiben über Neuladen weg
   loadedFor: null,      // Schlüssel des letzten Overpass-Ladevorgangs
   loading: false,
   settings: loadSettings(),
@@ -94,6 +95,16 @@ function toggleSaved(obj){
   else state.saved.push({ id:obj.id, name:obj.name, kind:obj.kind, lat:obj.lat, lon:obj.lon, elev:obj.elev, sub:obj.sub });
   persistSaved();
 }
+
+/* ---------- Ausgeblendete Objekte (aus der Liste gelöscht) ---------- */
+function loadHidden(){
+  try { return new Set(JSON.parse(localStorage.getItem('geo.hidden')||'[]')); } catch { return new Set(); }
+}
+function persistHidden(){ localStorage.setItem('geo.hidden', JSON.stringify([...state.hidden])); }
+function isHidden(id){ return state.hidden.has(id); }
+function hideObject(id){ state.hidden.add(id); persistHidden(); }
+function hideAllVisible(){ visibleObjects().forEach(o => state.hidden.add(o.id)); persistHidden(); }
+function unhideAll(){ state.hidden.clear(); persistHidden(); }
 
 /* ---------- Geometrie ---------- */
 const R = 6371; // km
@@ -156,27 +167,6 @@ function startGeo(){
 let headingSmooth = null;
 let hasAbsolute = false;   // haben wir schon nordbezogene (absolute) Werte gesehen?
 
-/* ---- TEMP Kompass-Diagnose ---- */
-const _cev = {};
-let _cCount = 0, _cLast = performance.now(), _cRate = 0;
-function compassDebug(e, absolute, used, hRaw){
-  const key = e.type + (e.absolute===true?'/abs' : e.absolute===false?'/rel' : '/?');
-  _cev[key] = (_cev[key]||0)+1;
-  _cCount++;
-  const now = performance.now();
-  if (now - _cLast > 500){ _cRate = Math.round(_cCount*1000/(now-_cLast)); _cCount=0; _cLast=now; }
-  const el = document.querySelector('#cdbg');
-  if (!el) return;
-  const num = (v,d=1)=> (typeof v==='number' && !Number.isNaN(v)) ? v.toFixed(d) : '–';
-  el.textContent =
-    'Events: ' + Object.entries(_cev).map(([k,v])=>k+'='+v).join('  ') + '\n' +
-    'Rate ~' + _cRate + '/s   benutzt: ' + (used?'JA':'nein (ignoriert)') + '\n' +
-    'type=' + e.type + '  absolute=' + e.absolute + '\n' +
-    'alpha=' + num(e.alpha) + '  beta=' + num(e.beta,0) + '  gamma=' + num(e.gamma,0) + '\n' +
-    'webkitCompass=' + num(e.webkitCompassHeading) + '\n' +
-    'roh→' + num(hRaw,0) + '°   Anzeige=' + (state.heading==null?'–':Math.round(state.heading)) + '°';
-}
-
 function onOrientation(e){
   let h = null;
   let absolute = false;
@@ -187,11 +177,6 @@ function onOrientation(e){
     h = (360 - e.alpha);                         // Android
     absolute = (e.absolute === true) || e.type === 'deviceorientationabsolute';
   }
-
-  // Diagnose: jedes Event protokollieren (auch die ignorierten)
-  const willUse = !(h == null || Number.isNaN(h)) && !(hasAbsolute && !absolute);
-  compassDebug(e, absolute, willUse, h == null ? NaN : h);
-
   if (h == null || Number.isNaN(h)) return;
 
   // Nordbezogene Werte bevorzugen: sobald es die gibt, relative Events ignorieren.
@@ -391,7 +376,7 @@ function recompute(){
   });
 }
 
-function visibleObjects(){ return state.objects.filter(o => !o.hidden); }
+function visibleObjects(){ return state.objects.filter(o => !o.hidden && !state.hidden.has(o.id)); }
 
 function inView(o){
   if (state.heading == null) return false;
@@ -401,7 +386,7 @@ function inView(o){
 /* ============================================================
    Rendering
    ============================================================ */
-function itemEl(o){
+function itemEl(o, opts){
   const div = document.createElement('div');
   div.className = 'item '+o.kind;
   const arrow = state.heading!=null ? arrowFor(o.brg) : '';
@@ -409,14 +394,26 @@ function itemEl(o){
   const subParts = [dir];
   if (o.sub) subParts.push(escapeHtml(o.sub));
   if (o.elev!=null) subParts.push(o.elev+' m');
+  const del = (opts && opts.deletable)
+    ? '<button class="item-del" title="Aus der Liste entfernen" aria-label="Entfernen">✕</button>' : '';
   div.innerHTML = `
     <div class="ico">${KIND_ICON[o.kind]}</div>
     <div class="body">
       <div class="name">${escapeHtml(o.name)} ${isSaved(o.id)?'<span class="saved-star">★</span>':''}</div>
       <div class="sub">${subParts.join(' · ')}</div>
     </div>
-    <div class="dist">${fmtDist(o.dist)}<div class="arrow">${arrow}</div></div>`;
+    <div class="dist">${fmtDist(o.dist)}<div class="arrow">${arrow}</div></div>
+    ${del}`;
   div.addEventListener('click', () => openSheet(o));
+  if (opts && opts.deletable){
+    div.querySelector('.item-del').addEventListener('click', ev => {
+      ev.stopPropagation();          // nicht das Detail-Sheet öffnen
+      hideObject(o.id);
+      recompute();
+      render();
+      drawRadar();
+    });
+  }
   return div;
 }
 const ARROWS=['↑','↗','→','↘','↓','↙','←','↖'];
@@ -456,8 +453,26 @@ function renderList(){
     return a.dist-b.dist;
   });
   box.innerHTML='';
-  list.slice(0,300).forEach(o => box.appendChild(itemEl(o)));
-  if (!list.length) box.innerHTML='<p class="muted">Keine Objekte. Radius erhöhen oder Daten neu laden.</p>';
+  list.slice(0,300).forEach(o => box.appendChild(itemEl(o, { deletable:true })));
+  if (!list.length && !q) box.innerHTML='<p class="muted">Keine Objekte. Radius erhöhen oder Daten neu laden.</p>';
+  else if (!list.length) box.innerHTML='<p class="muted">Nichts gefunden für „'+escapeHtml(q)+'".</p>';
+
+  // Fußzeile: ganze Liste leeren / Ausgeblendete zurückholen
+  const foot = document.createElement('div');
+  foot.className = 'list-foot';
+  const parts = [];
+  if (list.length) parts.push('<button class="btn small" data-act="clearList">🗙 Liste leeren</button>');
+  if (state.hidden.size) parts.push('<button class="btn small" data-act="unhide">↺ Ausgeblendete zurückholen ('+state.hidden.size+')</button>');
+  if (parts.length){
+    foot.innerHTML = parts.join('');
+    foot.querySelector('[data-act="clearList"]')?.addEventListener('click', () => {
+      hideAllVisible(); recompute(); render(); drawRadar();
+    });
+    foot.querySelector('[data-act="unhide"]')?.addEventListener('click', () => {
+      unhideAll(); recompute(); render(); drawRadar();
+    });
+    box.appendChild(foot);
+  }
 }
 
 function renderSaved(){

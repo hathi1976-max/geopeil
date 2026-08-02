@@ -68,11 +68,6 @@ body{
 .heading-readout{text-align:center; font-size:22px; margin:8px 0 4px; font-variant-numeric:tabular-nums}
 .heading-readout .card{color:var(--accent); font-weight:700; margin-left:6px}
 
-.cdbg{
-  margin:8px 0; padding:10px 12px; background:var(--bg2); border:1px solid var(--line);
-  border-radius:10px; color:var(--accent2); font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;
-  white-space:pre-wrap; word-break:break-word;
-}
 .fov-list{margin-top:8px; display:flex; flex-direction:column; gap:8px}
 
 /* Items */
@@ -87,6 +82,15 @@ body{
 .item .sub{font-size:13px; color:var(--muted)}
 .item .dist{font-weight:700; font-variant-numeric:tabular-nums; text-align:right}
 .item .arrow{font-size:20px; color:var(--accent); width:22px; text-align:center}
+.item-del{
+  flex:0 0 auto; width:34px; height:34px; border-radius:9px;
+  background:var(--bg3); color:var(--muted); border:1px solid var(--line);
+  font-size:16px; line-height:1; cursor:pointer;
+}
+.item-del:active{transform:scale(.94)}
+.item-del:hover{color:#ffb3ae; border-color:#f85149}
+.list-foot{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
+.btn.small{padding:8px 12px; font-size:13px}
 .item.peak{border-left:3px solid var(--peak)}
 .item.water{border-left:3px solid var(--water)}
 .item.place{border-left:3px solid var(--place)}
