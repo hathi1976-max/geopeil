@@ -96,15 +96,19 @@ function toggleSaved(obj){
   persistSaved();
 }
 
-/* ---------- Ausgeblendete Objekte (aus der Liste gelöscht) ---------- */
+/* ---------- Ausgeblendete Objekte (aus der Liste gelöscht) ----------
+   Nur für die laufende Sitzung: „Daten neu laden", ein neuer Standort oder
+   ein App-Neustart zeigen wieder die volle Liste. Sonst blieben gelöschte
+   Objekte wegen stabiler OSM-IDs dauerhaft weg. */
 function loadHidden(){
-  try { return new Set(JSON.parse(localStorage.getItem('geo.hidden')||'[]')); } catch { return new Set(); }
+  // Altlast aus früheren Versionen (dauerhaftes Ausblenden) aufräumen
+  try { localStorage.removeItem('geo.hidden'); } catch {}
+  return new Set();
 }
-function persistHidden(){ localStorage.setItem('geo.hidden', JSON.stringify([...state.hidden])); }
 function isHidden(id){ return state.hidden.has(id); }
-function hideObject(id){ state.hidden.add(id); persistHidden(); }
-function hideAllVisible(){ visibleObjects().forEach(o => state.hidden.add(o.id)); persistHidden(); }
-function unhideAll(){ state.hidden.clear(); persistHidden(); }
+function hideObject(id){ state.hidden.add(id); }
+function hideAllVisible(){ visibleObjects().forEach(o => state.hidden.add(o.id)); }
+function unhideAll(){ state.hidden.clear(); }
 
 /* ---------- Geometrie ---------- */
 const R = 6371; // km
@@ -348,6 +352,9 @@ async function fetchObjects(){
   const seen = new Map();
   for (const o of parsed) if (!seen.has(o.id)) seen.set(o.id, o);
   state.objects = Array.from(seen.values());
+  // Frische Daten = wieder alles zeigen. Sonst blieben gelöschte Objekte
+  // wegen stabiler OSM-IDs für immer weg ("kein neuer Ort mehr").
+  state.hidden.clear();
   setDataHint(state.objects.length+' Objekte geladen.');
   recompute();
   render();
