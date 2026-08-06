@@ -8,7 +8,7 @@ import { haversine, bearing, imBlickfeld } from './geo.js';
 // Einzige Quelle für die Versionsanzeige. Muss zusammen mit CACHE in sw.js
 // hochgezählt werden, sonst liefert der Service Worker alten Code aus und
 // Tests laufen am falschen Stand (Freigabe-Checkliste im README.md).
-export const APP_VERSION = 'v12';
+export const APP_VERSION = 'v13';
 
 export const state = {
   pos: null,            // {lat, lon, acc}
@@ -26,11 +26,21 @@ export const state = {
 
 /* ---------- Einstellungen ---------- */
 export function defaultSettings(){
-  return { radius:60, minElev:0, fov:25, decl:0,
+  // 40 km statt früher 60: 60 km lieferte im Ballungsraum ~7000 Objekte / 1,7 MB
+  // und lief regelmäßig in den Overpass-Timeout. Anpeilbar ist so weit ohnehin
+  // fast nichts außer Bergen.
+  return { radius:40, minElev:0, fov:25, decl:0,
            cats:{ peak:true, water:true, place:true, sight:false } };
 }
 export function loadSettings(){
-  try { return Object.assign(defaultSettings(), JSON.parse(localStorage.getItem('geo.settings')||'{}')); }
+  try {
+    const s = Object.assign(defaultSettings(), JSON.parse(localStorage.getItem('geo.settings')||'{}'));
+    // Auf den Regelbereich klemmen: ein früher gespeicherter Umkreis (bis 300 km)
+    // läge sonst über der neuen Obergrenze und der Schieberegler zeigte etwas
+    // anderes als der wirksame Wert.
+    s.radius = Math.min(150, Math.max(5, Number(s.radius) || 40));
+    return s;
+  }
   catch { return defaultSettings(); }
 }
 export function saveSettings(){

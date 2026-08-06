@@ -11,7 +11,7 @@ const ALLE_KATEGORIEN = { peak:true, water:true, place:true, sight:true };
 gruppe('buildQuery', () => {
   test('Kopf und Fuss stehen fest', () => {
     const q = buildQuery(52.5, 13.4, 60000, ALLE_KATEGORIEN);
-    wahr(q.startsWith('[out:json][timeout:30];('), q);
+    wahr(q.startsWith('[out:json][timeout:50];('), q);
     wahr(q.endsWith(');out center tags;'), q);
   });
 
@@ -29,8 +29,14 @@ gruppe('buildQuery', () => {
   });
 
   test('ohne Kategorie bleibt eine leere, gueltige Abfrage', () => {
-    gleich(buildQuery(0, 0, 1000, {}), '[out:json][timeout:30];();out center tags;');
-    gleich(buildQuery(0, 0, 1000, null), '[out:json][timeout:30];();out center tags;');
+    gleich(buildQuery(0, 0, 1000, {}), '[out:json][timeout:50];();out center tags;');
+    gleich(buildQuery(0, 0, 1000, null), '[out:json][timeout:50];();out center tags;');
+  });
+
+  test('Gipfel und Gewaesser-Knoten werden serverseitig auf benannte begrenzt', () => {
+    const q = buildQuery(0, 0, 1000, { peak:true, water:true });
+    wahr(q.includes('node["natural"="peak"]["name"]'), q);
+    wahr(q.includes('node["natural"="water"]["name"]'), q);
   });
 
   test('Orte sind auf die fuenf sinnvollen Typen begrenzt', () => {

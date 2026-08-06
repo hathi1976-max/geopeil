@@ -7,20 +7,29 @@
 export const OVERPASS_ENDPUNKTE = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
 ];
 
-export const OVERPASS_TIMEOUT_MS = 25000;
+// Großzügig: die öffentlichen Endpunkte brauchen unter Last real 25–50 s für
+// einen Regionalabruf. Mit den alten 25 s brach die App fast immer ab, bevor
+// eine gültige Antwort kam („leere Liste"). Muss über dem serverseitigen
+// [timeout:…] in buildQuery liegen, sonst killt der Client die noch laufende,
+// aber gleich fertige Abfrage.
+export const OVERPASS_TIMEOUT_MS = 55000;
 
 /* Baut die Overpass-QL-Abfrage. cats = {peak, water, place, sight}. */
 export function buildQuery(lat, lon, radiusM, cats){
   const c = cats || {};
   const parts = [];
+  // Überall ["name"]: parseElements verwirft ohnehin alles Namenlose. Ohne den
+  // serverseitigen Filter kamen z. B. ~1800 namenlose Gipfel und ~1600 Teiche
+  // nur mit, um gleich weggeworfen zu werden – unnötige Last und Übertragung.
   if (c.peak){
-    parts.push(`node["natural"="peak"](around:${radiusM},${lat},${lon});`);
-    parts.push(`node["natural"="volcano"](around:${radiusM},${lat},${lon});`);
+    parts.push(`node["natural"="peak"]["name"](around:${radiusM},${lat},${lon});`);
+    parts.push(`node["natural"="volcano"]["name"](around:${radiusM},${lat},${lon});`);
   }
   if (c.water){
-    parts.push(`node["natural"="water"](around:${radiusM},${lat},${lon});`);
+    parts.push(`node["natural"="water"]["name"](around:${radiusM},${lat},${lon});`);
     parts.push(`way["natural"="water"]["name"](around:${radiusM},${lat},${lon});`);
     parts.push(`way["waterway"="river"]["name"](around:${radiusM},${lat},${lon});`);
   }
@@ -30,7 +39,10 @@ export function buildQuery(lat, lon, radiusM, cats){
     parts.push(`node["historic"]["name"](around:${radiusM},${lat},${lon});`);
     parts.push(`way["historic"]["name"](around:${radiusM},${lat},${lon});`);
   }
-  return `[out:json][timeout:30];(${parts.join('')});out center tags;`;
+  // Serverseitiges Zeitlimit unter dem Client-Timeout (OVERPASS_TIMEOUT_MS):
+  // so liefert der Server bei Überlast einen sauberen Fehler, statt dass der
+  // Client eine noch laufende Abfrage abschneidet.
+  return `[out:json][timeout:50];(${parts.join('')});out center tags;`;
 }
 
 export function classify(tags){

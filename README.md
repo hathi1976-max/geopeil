@@ -37,7 +37,9 @@ Am zuverlässigsten über **HTTPS-Hosting** (z. B. GitHub Pages). Dann:
   bzw. kleine Sensorabweichungen (−30°…+30°).
 
 ## Einstellungen
-- **Umkreis** 5–300 km (große Werte = mehr entfernte Gipfel, aber langsamer).
+- **Umkreis** 5–150 km, Standard 40 km. Große Werte laden im Ballungsraum
+  tausende Objekte (60 km ≈ 7000 / 1,7 MB) und laufen leicht in den
+  Overpass-Timeout – für „was peile ich an?" reichen 30–40 km.
 - **Min. Berghöhe** blendet kleine Hügel aus (nützlich bei großem Umkreis).
 - **Blickfeld-Breite** ±5°…±60°.
 - **Kategorien** Berge, Flüsse/Seen, Orte, Sehenswürdigkeiten.

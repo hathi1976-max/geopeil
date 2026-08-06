@@ -186,7 +186,11 @@ export function renderList(){
   });
   box.innerHTML = '';
   list.slice(0,300).forEach(o => box.appendChild(itemEl(o, { deletable:true })));
-  if (!list.length && !q) box.innerHTML = '<p class="muted">Keine Objekte. Radius erhöhen oder Daten neu laden.</p>';
+  if (!list.length && !q){
+    box.innerHTML = state.loading
+      ? '<p class="muted">Lade Objekte … (der OpenStreetMap-Dienst kann bis zu einer Minute brauchen)</p>'
+      : '<p class="muted">Keine Objekte. Umkreis kleiner stellen und „Daten neu laden".</p>';
+  }
   else if (!list.length) box.innerHTML = '<p class="muted">Nichts gefunden für „' + escapeHtml(q) + '".</p>';
 
   // Fußzeile: ganze Liste leeren / entfernte Einträge zurückholen

@@ -14,9 +14,9 @@
 import { buildQuery, parseElements, dedupe, locKey, overpassAbfrage } from './overpass.js';
 import { state, APP_VERSION, recompute, saveSettings, isSaved, toggleSaved } from './store.js';
 import { setzeFixRueckruf, enableSensors } from './sensors.js';
-import { $, $$, setDataHint, setGps, clearBanner, render, renderList,
+import { $, $$, setDataHint, setGps, clearBanner, showBanner, render, renderList,
          renderHeading, resizeRadar, drawRadar, updateSortOptions, sortAuswahlGeaendert,
-         closeSheet, aktuellesSheetObjekt } from './ui.js';
+         closeSheet, aktuellesSheetObjekt, escapeHtml } from './ui.js';
 
 /* ============================================================
    Daten laden
@@ -32,7 +32,9 @@ async function fetchObjects(){
   state.loadedFor = key;
   state.loadedRadius = r;
   state.loading = true;
+  clearBanner('data');
   setDataHint('Lade Objekte …');
+  render();   // Liste/Radar zeigen sofort den Ladehinweis statt „Keine Objekte"
 
   try {
     const data = await overpassAbfrage(buildQuery(lat, lon, r*1000, state.settings.cats));
@@ -44,6 +46,7 @@ async function fetchObjects(){
     // Frische Daten = wieder alles zeigen. Sonst blieben gelöschte Objekte
     // wegen stabiler OSM-IDs für immer weg („kein neuer Ort mehr").
     state.entfernt.clear();
+    clearBanner('data');
     setDataHint(state.objects.length + ' Objekte geladen.');
     recompute();
     render();
@@ -52,7 +55,16 @@ async function fetchObjects(){
     // Schlüssel zurücknehmen: sonst gilt der Ort als geladen und maybeReload
     // probiert es hier nie wieder – die App bliebe nach einem Netzfehler leer.
     if (state.loadedFor === key){ state.loadedFor = null; state.loadedRadius = 0; }
-    setDataHint('Fehler beim Laden: ' + ((err && err.message) || '?'));
+    const msg = (err && err.message) || '?';
+    setDataHint('Fehler beim Laden: ' + msg);
+    // Nicht nur im Einstellungen-Tab verstecken: sichtbarer Hinweis mit Knopf,
+    // sonst starrt man auf eine leere Liste ohne zu wissen, warum.
+    showBanner('data', 'error',
+      `<b>Objekte konnten nicht geladen werden.</b><br>${escapeHtml(msg)}
+       <br>Der OpenStreetMap-Dienst ist manchmal überlastet – oft hilft es,
+       den Umkreis kleiner zu stellen.
+       <br><button class="btn" data-action="reload">Nochmal laden</button>`);
+    render();
   } finally {
     state.loading = false;
   }
@@ -98,6 +110,7 @@ function bindUI(){
   $('#btnEnable').addEventListener('click', starteSensoren);
   $('#banner').addEventListener('click', e => {
     if (e.target.closest('[data-action="retry"]')) retrySensors();
+    else if (e.target.closest('[data-action="reload"]')) maybeReload(true);
   });
   $$('.tab').forEach(t => t.addEventListener('click', () => switchView(t.dataset.view)));
 
