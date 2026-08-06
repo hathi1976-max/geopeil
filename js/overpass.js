@@ -10,23 +10,42 @@ export const OVERPASS_ENDPUNKTE = [
   'https://overpass.private.coffee/api/interpreter',
 ];
 
-// Großzügig: die öffentlichen Endpunkte brauchen unter Last real 25–50 s für
-// einen Regionalabruf. Mit den alten 25 s brach die App fast immer ab, bevor
-// eine gültige Antwort kam („leere Liste"). Muss über dem serverseitigen
-// [timeout:…] in buildQuery liegen, sonst killt der Client die noch laufende,
-// aber gleich fertige Abfrage.
-export const OVERPASS_TIMEOUT_MS = 55000;
+// Großzügig: die öffentlichen Endpunkte brauchen unter Last real 30–60 s,
+// besonders seit Gipfel bis 100 km serverseitig nach Höhe gefiltert werden.
+// Mit zu knappem Limit bricht der Client die noch laufende, aber gleich fertige
+// Abfrage ab („leere Liste"). Muss über dem serverseitigen [timeout:…] in
+// buildQuery liegen.
+export const OVERPASS_TIMEOUT_MS = 70000;
 
-/* Baut die Overpass-QL-Abfrage. cats = {peak, water, place, sight}. */
-export function buildQuery(lat, lon, radiusM, cats){
+/* Baut die Overpass-QL-Abfrage. cats = {peak, water, place, sight}.
+   opts (optional):
+     peakRadiusM       – eigener, meist größerer Umkreis nur für Gipfel; Berge
+                         sieht man aus 100 km, Dörfer nicht.
+     fernGipfelMinEle  – ab diesem Höhenmeter zählen Gipfel jenseits von radiusM
+                         noch mit. Ohne die Schranke zieht ein 100-km-Umkreis
+                         im Mittelgebirge tausende benannte Hügel und die Abfrage
+                         läuft in den Timeout. */
+export function buildQuery(lat, lon, radiusM, cats, opts){
   const c = cats || {};
+  const o = opts || {};
+  const peakRadiusM = o.peakRadiusM || radiusM;
+  const fernMin = o.fernGipfelMinEle || 0;
   const parts = [];
   // Überall ["name"]: parseElements verwirft ohnehin alles Namenlose. Ohne den
   // serverseitigen Filter kamen z. B. ~1800 namenlose Gipfel und ~1600 Teiche
   // nur mit, um gleich weggeworfen zu werden – unnötige Last und Übertragung.
   if (c.peak){
+    // Nahbereich: alle benannten Gipfel/Hügel (Höhenfilter macht später die App
+    // über „Min. Berghöhe").
     parts.push(`node["natural"="peak"]["name"](around:${radiusM},${lat},${lon});`);
     parts.push(`node["natural"="volcano"]["name"](around:${radiusM},${lat},${lon});`);
+    // Fernbereich: nur echte Berge ab fernGipfelMinEle. Die Überlappung mit dem
+    // Nahbereich fängt dedupe() ab.
+    if (peakRadiusM > radiusM){
+      const hoehe = fernMin > 0 ? `(if:number(t["ele"])>=${fernMin})` : '';
+      parts.push(`node["natural"="peak"]["name"](around:${peakRadiusM},${lat},${lon})${hoehe};`);
+      parts.push(`node["natural"="volcano"]["name"](around:${peakRadiusM},${lat},${lon})${hoehe};`);
+    }
   }
   if (c.water){
     parts.push(`node["natural"="water"]["name"](around:${radiusM},${lat},${lon});`);
@@ -42,7 +61,7 @@ export function buildQuery(lat, lon, radiusM, cats){
   // Serverseitiges Zeitlimit unter dem Client-Timeout (OVERPASS_TIMEOUT_MS):
   // so liefert der Server bei Überlast einen sauberen Fehler, statt dass der
   // Client eine noch laufende Abfrage abschneidet.
-  return `[out:json][timeout:50];(${parts.join('')});out center tags;`;
+  return `[out:json][timeout:65];(${parts.join('')});out center tags;`;
 }
 
 export function classify(tags){

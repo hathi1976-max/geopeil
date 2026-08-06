@@ -8,7 +8,14 @@ import { haversine, bearing, imBlickfeld } from './geo.js';
 // Einzige Quelle für die Versionsanzeige. Muss zusammen mit CACHE in sw.js
 // hochgezählt werden, sonst liefert der Service Worker alten Code aus und
 // Tests laufen am falschen Stand (Freigabe-Checkliste im README.md).
-export const APP_VERSION = 'v13';
+export const APP_VERSION = 'v14';
+
+// Gipfel bekommen einen eigenen, größeren Umkreis als Orte/Gewässer: Berge sind
+// aus 100 km sichtbar und anpeilbar, ein Dorf nicht. Jenseits des normalen
+// Umkreises (state.settings.radius) zählen nur Berge ab FERN_GIPFEL_MIN_ELE,
+// sonst überschwemmen tausende benannte Mittelgebirgshügel Abfrage und Radar.
+export const BERG_REICHWEITE_KM = 100;
+export const FERN_GIPFEL_MIN_ELE = 800;
 
 export const state = {
   pos: null,            // {lat, lon, acc}
@@ -20,9 +27,14 @@ export const state = {
   loadedFor: null,      // Ortsschlüssel des letzten Overpass-Ladevorgangs
   loadedRadius: 0,      // Umkreis (km), für den zuletzt geladen wurde
   loading: false,
+  radarMax: 0,          // km-Reichweite, auf die der Radar gerade skaliert
   settings: loadSettings(),
   currentView: 'radar',
 };
+
+/* Reichweite nur für Gipfel: mindestens der eingestellte Umkreis, sonst die
+   Bergreichweite. */
+export function gipfelRadius(){ return Math.max(state.settings.radius, BERG_REICHWEITE_KM); }
 
 /* ---------- Einstellungen ---------- */
 export function defaultSettings(){
@@ -88,13 +100,23 @@ export function zeigeAlleWieder(){ state.entfernt.clear(); }
 export function recompute(){
   if (!state.pos) return;
   const { lat, lon } = state.pos;
+  const nahRadius = state.settings.radius;
+  const bergRadius = gipfelRadius();
+  let radarMax = nahRadius;
   for (const o of state.objects){
     o.dist = haversine(lat, lon, o.lat, o.lon);
     o.brg  = bearing(lat, lon, o.lat, o.lon);
+    // Gipfel dürfen bis zur Bergreichweite stehen, alles andere nur bis zum Umkreis.
+    const maxDist = o.kind === 'peak' ? bergRadius : nahRadius;
     o.gefiltert = (o.kind === 'peak' && state.settings.minElev > 0
                    && (o.elev == null || o.elev < state.settings.minElev))
-               || (o.dist > state.settings.radius);
+               || (o.dist > maxDist);
+    // Radar so weit aufziehen, dass der fernste sichtbare Gipfel noch draufpasst
+    // (sonst klebten alle fernen Berge am Rand). In flachem Gelände ohne ferne
+    // Berge bleibt es beim Umkreis.
+    if (!o.gefiltert && o.dist > radarMax) radarMax = o.dist;
   }
+  state.radarMax = radarMax;
 }
 
 export function visibleObjects(){

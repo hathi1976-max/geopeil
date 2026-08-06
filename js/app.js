@@ -12,7 +12,8 @@
    ============================================================ */
 
 import { buildQuery, parseElements, dedupe, locKey, overpassAbfrage } from './overpass.js';
-import { state, APP_VERSION, recompute, saveSettings, isSaved, toggleSaved } from './store.js';
+import { state, APP_VERSION, recompute, saveSettings, isSaved, toggleSaved,
+         gipfelRadius, FERN_GIPFEL_MIN_ELE } from './store.js';
 import { setzeFixRueckruf, enableSensors } from './sensors.js';
 import { $, $$, setDataHint, setGps, clearBanner, showBanner, render, renderList,
          renderHeading, resizeRadar, drawRadar, updateSortOptions, sortAuswahlGeaendert,
@@ -37,7 +38,10 @@ async function fetchObjects(){
   render();   // Liste/Radar zeigen sofort den Ladehinweis statt „Keine Objekte"
 
   try {
-    const data = await overpassAbfrage(buildQuery(lat, lon, r*1000, state.settings.cats));
+    const data = await overpassAbfrage(buildQuery(lat, lon, r*1000, state.settings.cats, {
+      peakRadiusM: gipfelRadius() * 1000,
+      fernGipfelMinEle: FERN_GIPFEL_MIN_ELE,
+    }));
     // Gehört die Antwort noch zum aktuellen Ort? Sonst verwerfen, statt die
     // Liste mit Objekten von woanders zu überschreiben.
     if (state.loadedFor !== key) return;

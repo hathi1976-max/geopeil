@@ -11,7 +11,7 @@ const ALLE_KATEGORIEN = { peak:true, water:true, place:true, sight:true };
 gruppe('buildQuery', () => {
   test('Kopf und Fuss stehen fest', () => {
     const q = buildQuery(52.5, 13.4, 60000, ALLE_KATEGORIEN);
-    wahr(q.startsWith('[out:json][timeout:50];('), q);
+    wahr(q.startsWith('[out:json][timeout:65];('), q);
     wahr(q.endsWith(');out center tags;'), q);
   });
 
@@ -29,14 +29,29 @@ gruppe('buildQuery', () => {
   });
 
   test('ohne Kategorie bleibt eine leere, gueltige Abfrage', () => {
-    gleich(buildQuery(0, 0, 1000, {}), '[out:json][timeout:50];();out center tags;');
-    gleich(buildQuery(0, 0, 1000, null), '[out:json][timeout:50];();out center tags;');
+    gleich(buildQuery(0, 0, 1000, {}), '[out:json][timeout:65];();out center tags;');
+    gleich(buildQuery(0, 0, 1000, null), '[out:json][timeout:65];();out center tags;');
   });
 
   test('Gipfel und Gewaesser-Knoten werden serverseitig auf benannte begrenzt', () => {
     const q = buildQuery(0, 0, 1000, { peak:true, water:true });
     wahr(q.includes('node["natural"="peak"]["name"]'), q);
     wahr(q.includes('node["natural"="water"]["name"]'), q);
+  });
+
+  test('groesserer Gipfel-Radius fuegt eine Fern-Klausel mit Hoehenschranke an', () => {
+    const q = buildQuery(50, 13, 40000, { peak:true },
+                         { peakRadiusM:100000, fernGipfelMinEle:800 });
+    // Nahbereich unveraendert bei 40 km
+    wahr(q.includes('node["natural"="peak"]["name"](around:40000,50,13);'), q);
+    // Fernbereich bei 100 km, nur ab 800 m
+    wahr(q.includes('node["natural"="peak"]["name"](around:100000,50,13)(if:number(t["ele"])>=800);'), q);
+  });
+
+  test('ohne groesseren Gipfel-Radius gibt es keine Fern-Klausel', () => {
+    const q = buildQuery(50, 13, 40000, { peak:true });
+    falsch(q.includes('around:100000'));
+    falsch(q.includes('if:number'));
   });
 
   test('Orte sind auf die fuenf sinnvollen Typen begrenzt', () => {

@@ -277,7 +277,9 @@ export function drawRadar(){
   ctx.clearRect(0, 0, W, H);
 
   const heading = state.heading ?? 0;
-  const maxD = state.settings.radius;
+  // Auf die Reichweite des fernsten sichtbaren Objekts skalieren (recompute
+  // setzt state.radarMax), damit ferne Berge nicht alle am Rand kleben.
+  const maxD = state.radarMax || state.settings.radius;
 
   // Ringe
   ctx.strokeStyle = '#30363d'; ctx.fillStyle = '#8b949e'; ctx.lineWidth = 2;
