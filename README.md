@@ -42,12 +42,36 @@ Am zuverlässigsten über **HTTPS-Hosting** (z. B. GitHub Pages). Dann:
 - **Blickfeld-Breite** ±5°…±60°.
 - **Kategorien** Berge, Flüsse/Seen, Orte, Sehenswürdigkeiten.
 
+## Freigabe-Checkliste
+Vor jedem Push abarbeiten – ein vergessener Cache-Bump führt dazu, dass der
+Service Worker alten Code ausliefert und Tests am falschen Stand laufen:
+
+1. `APP_VERSION` in `js/store.js` **und** `CACHE` in `sw.js` auf dieselbe neue
+   Nummer setzen (`v12` → `v13`). Die Anzeige auf dem Startbildschirm kommt aus
+   `APP_VERSION`, es gibt keine dritte Stelle mehr.
+2. Neue oder umbenannte Dateien in die `SHELL`-Liste in `sw.js` aufnehmen –
+   sonst fehlen sie offline.
+3. `tests/test.html` im Browser öffnen, Kopfzeile muss „alle N Tests bestanden"
+   melden.
+4. In den Entwicklertools unter *Application → Service Workers* „Update on
+   reload" anhaken und die Seite einmal neu laden; die angezeigte Versionsnummer
+   muss die neue sein.
+
 ## Bekannte Grenzen / nächste Schritte
 - **Sichtlinie**: verdeckte Berge werden noch angezeigt. Echte
   Horizont-/Verdeckungsberechnung braucht ein Höhenmodell (DEM) – geplant.
 - Sehr kleine Gewässer (Teiche) tauchen im Umkreis mit auf; ggf. Radius senken.
-- **Update-Hinweis**: Der Service Worker cached die App-Dateien. Nach Änderungen
-  die Version in `sw.js` (`const CACHE = 'geopeil-vN'`) hochzählen, damit Geräte
-  die neue Version laden.
+- Angezeigt werden nur **benannte** Objekte. Unbenannte Gipfel, Teiche und
+  Flussabschnitte gibt es in OSM reichlich – sie lassen sich aber nicht
+  ansagen und werden deshalb schon beim Auswerten verworfen.
+- **Favoriten altern**: gespeichert wird eine Kopie des Objekts (Name, Art,
+  Koordinaten), nicht nur die OSM-ID. Vorteil: der Favorit bleibt auch ohne Netz
+  und außerhalb des geladenen Umkreises sichtbar. Preis: wird der Eintrag in OSM
+  verschoben oder umbenannt, bleibt die gespeicherte Fassung stehen – dann
+  einmal löschen und neu speichern.
+- **Umkreis kleiner stellen** löst absichtlich **keinen** neuen Abruf aus: die
+  Objekte stecken in den bereits geladenen Daten. Nachgeladen wird nur, wenn der
+  Umkreis über den zuletzt geladenen hinauswächst, der Standort wechselt oder
+  „Daten neu laden" gedrückt wird.
 
 Daten © OpenStreetMap-Mitwirkende.

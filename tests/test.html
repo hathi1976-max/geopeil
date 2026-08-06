@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>GeoPeil – Tests</title>
+  <style>
+    body { background:#0d1117; color:#c9d1d9; font:14px/1.5 ui-monospace, Consolas, monospace; padding:16px; }
+    h1 { font-size:16px; }
+    pre { white-space:pre-wrap; }
+    .ok { color:#3fb950; }
+    .fehl { color:#f85149; }
+    #kopf { font-weight:bold; margin-bottom:8px; }
+    .hinweis { color:#8b949e; margin-bottom:12px; }
+  </style>
+</head>
+<body>
+  <h1>GeoPeil – Testlauf</h1>
+  <p class="hinweis">Reine Rechen- und Zustandstests. Es geht kein einziger Abruf
+    an Overpass oder Nominatim hinaus; der Netzweg wird mit Attrappen geprüft.</p>
+  <div id="kopf">läuft …</div>
+  <pre id="ausgabe"></pre>
+
+  <!-- Muss vor den Modul-Importen laufen: ein registrierter Service Worker
+       liefert sonst alten Code aus, und der Testlauf misst Altbestand. -->
+  <script>
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller){
+      (async () => {
+        for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+        for (const k of await caches.keys()) await caches.delete(k);
+        location.reload();
+      })();
+    }
+  </script>
+
+  <script type="module">
+    import { laufeAlle } from './lauf.js';
+    // Reihenfolge egal – jede Datei meldet ihre Faelle beim Laeufer an
+    import './geo.test.js';
+    import './overpass.test.js';
+    import './sensors.test.js';
+
+    const ausgabe = document.getElementById('ausgabe');
+    const kopf = document.getElementById('kopf');
+
+    const ergebnis = await laufeAlle((zeile, ok) => {
+      const span = document.createElement('span');
+      span.className = ok ? 'ok' : 'fehl';
+      span.textContent = zeile + '\n';
+      ausgabe.appendChild(span);
+    });
+
+    kopf.textContent = ergebnis.fehlgeschlagen === 0
+      ? `alle ${ergebnis.gesamt} Tests bestanden`
+      : `${ergebnis.fehlgeschlagen} von ${ergebnis.gesamt} Tests fehlgeschlagen`;
+    kopf.className = ergebnis.fehlgeschlagen === 0 ? 'ok' : 'fehl';
+
+    // Fuer automatisierte Abfrage von aussen
+    window.__TESTERGEBNIS = ergebnis;
+  </script>
+</body>
+</html>

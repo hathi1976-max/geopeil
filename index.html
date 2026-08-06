@@ -28,7 +28,7 @@
     <p>Diese App braucht deinen <b>Standort</b> und den <b>Kompass</b> des Handys.</p>
     <button id="btnEnable" class="btn btn-primary">Standort &amp; Kompass erlauben</button>
     <p id="permHint" class="hint"></p>
-    <p class="ver">Version v10</p>
+    <p class="ver">Version <span id="appVersion">–</span></p>
   </section>
 
   <main id="app" hidden>
@@ -101,7 +101,8 @@
 
       <button id="btnReload" class="btn">Daten neu laden</button>
       <p id="dataHint" class="hint"></p>
-      <p class="muted small">Daten © OpenStreetMap-Mitwirkende (Overpass API). Luftlinie = Großkreis-Distanz.</p>
+      <p class="muted small">Daten © OpenStreetMap-Mitwirkende (Overpass API). Luftlinie = Großkreis-Distanz.
+        Angezeigt werden nur <b>benannte</b> Objekte – unbenannte Gipfel oder Seen fehlen in OSM-Daten oft.</p>
     </section>
   </main>
 
@@ -118,6 +119,9 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <!-- ES-Modul: der Einstiegspunkt liegt in js/app.js und zieht die übrigen
+       Module nach (siehe CODEREVIEW.md, Befund C3). Module laufen ohnehin
+       erst nach dem Parsen des Dokuments, ein defer ist daher unnötig. -->
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
